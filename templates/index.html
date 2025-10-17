@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalkulator Matriks - Operasi Baris Elementer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .matrix-input {
+            width: 60px;
+            text-align: center;
+        }
+        .step-container {
+            margin: 20px 0;
+            padding: 15px;
+            border-left: 3px solid #007bff;
+            background-color: #f8f9fa;
+        }
+        .matrix-display {
+            font-family: monospace;
+            white-space: pre;
+            overflow-x: auto;
+            padding: 15px;
+            background: #fff;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .step-number {
+            font-weight: bold;
+            color: #007bff;
+            margin-right: 10px;
+        }
+        .step-description {
+            color: #555;
+            margin-bottom: 10px;
+        }
+        .matrix-operation {
+            color: #28a745;
+            font-style: italic;
+            margin: 10px 0;
+        }
+        .arrow-step {
+            text-align: center;
+            color: #6c757d;
+            font-size: 1.5em;
+            margin: 10px 0;
+        }
+        .final-result {
+            background: #e8f5e9;
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .matrix-equation {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-primary">
+        <div class="container">
+            <span class="navbar-brand mb-0 h1">Kalkulator Matriks - Operasi Baris Elementer</span>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Input Matriks</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Ukuran Matriks:</label>
+                            <div class="row g-2">
+                                <div class="col-auto">
+                                    <input type="number" id="rows" class="form-control" value="3" min="1" max="10">
+                                    <small class="text-muted">Baris</small>
+                                </div>
+                                <div class="col-auto">
+                                    <input type="number" id="cols" class="form-control" value="4" min="1" max="10">
+                                    <small class="text-muted">Kolom</small>
+                                </div>
+                                <div class="col-auto">
+                                    <button class="btn btn-secondary" onclick="createMatrix()">
+                                        <i class="fas fa-table"></i> Buat Matriks
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="matrix-container" class="mb-3">
+                            <!-- Matrix inputs will be generated here -->
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-primary" onclick="calculate('ref')">
+                                <i class="fas fa-calculator"></i> Hitung Bentuk Eselon Baris (REF)
+                            </button>
+                            <button class="btn btn-success" onclick="calculate('rref')">
+                                <i class="fas fa-equals"></i> Hitung Bentuk Eselon Baris Tereduksi (RREF)
+                            </button>
+                            <button class="btn btn-info" onclick="calculate('gauss-jordan')">
+                                <i class="fas fa-project-diagram"></i> Eliminasi Gauss-Jordan
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Hasil Perhitungan</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="result-container">
+                            <!-- Results will be displayed here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function createMatrix() {
+            const rows = parseInt(document.getElementById('rows').value);
+            const cols = parseInt(document.getElementById('cols').value);
+            const container = document.getElementById('matrix-container');
+            
+            let html = '<table class="table table-bordered">';
+            for (let i = 0; i < rows; i++) {
+                html += '<tr>';
+                for (let j = 0; j < cols; j++) {
+                    html += `<td><input type="number" step="any" class="form-control matrix-input" data-row="${i}" data-col="${j}" value="0"></td>`;
+                }
+                html += '</tr>';
+            }
+            html += '</table>';
+            
+            container.innerHTML = html;
+        }
+
+        function getMatrixValues() {
+            const rows = parseInt(document.getElementById('rows').value);
+            const cols = parseInt(document.getElementById('cols').value);
+            let matrix = [];
+            
+            for (let i = 0; i < rows; i++) {
+                let row = [];
+                for (let j = 0; j < cols; j++) {
+                    const input = document.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
+                    row.push(parseFloat(input.value) || 0);
+                }
+                matrix.push(row);
+            }
+            
+            return matrix;
+        }
+
+        function displayResults(data) {
+            const container = document.getElementById('result-container');
+            let html = '';
+            
+            if (data.status === 'error') {
+                html = `<div class="alert alert-danger">${data.message}</div>`;
+            } else {
+                let stepNumber = 1;
+                // Tampilkan langkah-langkah
+                data.steps.forEach(([description, matrix], index) => {
+                    html += `
+                        <div class="step-container">
+                            <div class="step-number">Langkah ${stepNumber}</div>
+                            <div class="step-description">${description}</div>
+                            <div class="matrix-equation">
+                                <div class="matrix-display">${matrix}</div>
+                            </div>`;
+                    
+                    // Tambahkan tanda panah jika bukan langkah terakhir
+                    if (index < data.steps.length - 1) {
+                        html += `
+                            <div class="arrow-step">
+                                <i class="fas fa-arrow-down"></i>
+                                <div class="matrix-operation">${data.steps[index + 1][0]}</div>
+                            </div>
+                        `;
+                    }
+                    
+                    html += `</div>`;
+                    stepNumber++;
+                });
+                
+                // Tampilkan hasil akhir dan penjelasan
+                html += `
+                    <div class="final-result">
+                        <h5 class="text-success"><i class="fas fa-check-circle"></i> Hasil Akhir</h5>
+                        <div class="matrix-display">${data.final_matrix}</div>
+                        <hr>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> ${data.explanation}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            container.innerHTML = html;
+        }
+
+        function calculate(operation) {
+            const matrix = getMatrixValues();
+            
+            fetch('/calculate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    matrix: matrix,
+                    operation: operation
+                })
+            })
+            .then(response => response.json())
+            .then(data => displayResults(data))
+            .catch(error => {
+                console.error('Error:', error);
+                displayResults({
+                    status: 'error',
+                    message: 'Terjadi kesalahan dalam perhitungan.'
+                });
+            });
+        }
+
+        // Create initial matrix when page loads
+        document.addEventListener('DOMContentLoaded', createMatrix);
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
