@@ -7,7 +7,7 @@ import sympy
 def solve_matrix_sympy(matrix_input):
     """
     Menghitung Bentuk Eselon Baris Tereduksi (RREF) dan menganalisis solusi
-    dari sistem persamaan linear menggunakan SymPy untuk presisi eksak.
+    dari sistem persamaan linear menggunakan SymPy untuk presisi.
 
     Args:
         matrix_input (list of lists): Matriks augmented.
@@ -58,7 +58,6 @@ def solve_matrix_sympy(matrix_input):
 
 
 # --- KELAS UNTUK ANTARMUKA PENGGUNA (GUI) ---
-
 class App(tk.Tk):
     def __init__(self):
         super().__init__()

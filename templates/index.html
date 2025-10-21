@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kalkulator Matriks - Operasi Baris Elementer</title>
+    <title>Matriks Calculator</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -64,67 +64,79 @@
 </head>
 <body>
     <nav class="navbar navbar-dark bg-primary">
-        <div class="container">
-            <span class="navbar-brand mb-0 h1">Kalkulator Matriks - Operasi Baris Elementer</span>
+        <div class="container d-flex justify-content-center">
+            <span class="navbar-brand mb-0 h1">Progam Untuk Menghitung Matriks</span>
         </div>
     </nav>
 
     <div class="container mt-4">
-        <div class="row">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Input Matriks</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <label class="form-label">Ukuran Matriks:</label>
-                            <div class="row g-2">
-                                <div class="col-auto">
-                                    <input type="number" id="rows" class="form-control" value="3" min="1" max="10">
-                                    <small class="text-muted">Baris</small>
-                                </div>
-                                <div class="col-auto">
-                                    <input type="number" id="cols" class="form-control" value="4" min="1" max="10">
-                                    <small class="text-muted">Kolom</small>
-                                </div>
-                                <div class="col-auto">
-                                    <button class="btn btn-secondary" onclick="createMatrix()">
-                                        <i class="fas fa-table"></i> Buat Matriks
-                                    </button>
-                                </div>
-                            </div>
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Input Matriks</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Ukuran Matriks:</label>
+                    <div class="row g-2">
+                        <div class="col-auto">
+                            <input type="number" id="rows" class="form-control" value="3" min="1" max="10">
+                            <small class="text-muted">Baris</small>
                         </div>
-
-                        <div id="matrix-container" class="mb-3">
-                            <!-- Matrix inputs will be generated here -->
+                        <div class="col-auto">
+                            <input type="number" id="cols" class="form-control" value="4" min="1" max="10">
+                            <small class="text-muted">Kolom</small>
                         </div>
-
-                        <div class="d-grid gap-2">
-                            <button class="btn btn-primary" onclick="calculate('ref')">
-                                <i class="fas fa-calculator"></i> Hitung Bentuk Eselon Baris (REF)
-                            </button>
-                            <button class="btn btn-success" onclick="calculate('rref')">
-                                <i class="fas fa-equals"></i> Hitung Bentuk Eselon Baris Tereduksi (RREF)
-                            </button>
-                            <button class="btn btn-info" onclick="calculate('gauss-jordan')">
-                                <i class="fas fa-project-diagram"></i> Eliminasi Gauss-Jordan
+                        <div class="col-auto">
+                            <button class="btn btn-secondary" onclick="createMatrix()">
+                                <i class="fas fa-table"></i> Buat Matriks
                             </button>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Hasil Perhitungan</h5>
-                    </div>
-                    <div class="card-body">
-                        <div id="result-container">
-                            <!-- Results will be displayed here -->
+                <div id="matrix-container" class="mb-3">
+                    <!-- Matrix inputs will be generated here -->
+                </div>
+
+                <div class="d-grid gap-2">
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <button class="btn btn-primary w-100" onclick="calculate('ref')">
+                                <i class="fas fa-calculator"></i> Eliminasi Gauss (OBE)
+                            </button>
+                        </div>
+                        <div class="col-md-6">
+                            <button class="btn btn-info text-white w-100" onclick="calculate('ref-leading-one')">
+                                <i class="fas fa-calculator"></i> Eliminasi Gauss (Satu Utama)
+                            </button>
                         </div>
                     </div>
+                    <button class="btn btn-success" onclick="calculate('gauss-jordan')">
+                        <i class="fas fa-equals"></i> Eliminasi Gauss-Jordan (Tereduksi)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal untuk hasil perhitungan -->
+    <div class="modal fade" id="resultModal" tabindex="-1" aria-labelledby="resultModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="resultModalLabel">Hasil Perhitungan</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="solution-type" class="alert mb-4">
+                        <!-- Jenis solusi akan ditampilkan di sini -->
+                    </div>
+                    <div id="result-container">
+                        <!-- Results will be displayed here -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
                 </div>
             </div>
         </div>
@@ -168,11 +180,43 @@
 
         function displayResults(data) {
             const container = document.getElementById('result-container');
+            const solutionType = document.getElementById('solution-type');
             let html = '';
             
             if (data.status === 'error') {
                 html = `<div class="alert alert-danger">${data.message}</div>`;
+                solutionType.style.display = 'none';
             } else {
+                // Tentukan jenis solusi dan atur tampilan
+                const solutionText = data.explanation.toLowerCase();
+                let solutionClass, solutionIcon, solutionTitle;
+                
+                if (solutionText.includes('tidak ada solusi')) {
+                    solutionClass = 'alert-danger';
+                    solutionIcon = 'times-circle';
+                    solutionTitle = 'Tidak Ada Solusi';
+                } else if (solutionText.includes('tak hingga')) {
+                    solutionClass = 'alert-warning';
+                    solutionIcon = 'infinity';
+                    solutionTitle = 'Solusi Tak Hingga Banyak';
+                } else {
+                    solutionClass = 'alert-success';
+                    solutionIcon = 'check-circle';
+                    solutionTitle = 'Solusi Unik (Tunggal)';
+                }
+                
+                solutionType.className = `alert ${solutionClass} mb-4`;
+                solutionType.innerHTML = `
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-${solutionIcon} fa-2x me-3"></i>
+                        <div>
+                            <h5 class="mb-1">${solutionTitle}</h5>
+                            <div>${data.explanation}</div>
+                        </div>
+                    </div>
+                `;
+                solutionType.style.display = 'block';
+                
                 let stepNumber = 1;
                 // Tampilkan langkah-langkah
                 data.steps.forEach(([description, matrix], index) => {
@@ -198,15 +242,11 @@
                     stepNumber++;
                 });
                 
-                // Tampilkan hasil akhir dan penjelasan
+                // Tampilkan hasil akhir
                 html += `
                     <div class="final-result">
                         <h5 class="text-success"><i class="fas fa-check-circle"></i> Hasil Akhir</h5>
                         <div class="matrix-display">${data.final_matrix}</div>
-                        <hr>
-                        <div class="alert alert-info">
-                            <i class="fas fa-info-circle"></i> ${data.explanation}
-                        </div>
                     </div>
                 `;
             }
@@ -228,13 +268,21 @@
                 })
             })
             .then(response => response.json())
-            .then(data => displayResults(data))
+            .then(data => {
+                displayResults(data);
+                // Tampilkan modal hasil
+                const resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+                resultModal.show();
+            })
             .catch(error => {
                 console.error('Error:', error);
                 displayResults({
                     status: 'error',
                     message: 'Terjadi kesalahan dalam perhitungan.'
                 });
+                // Tampilkan modal hasil meskipun error
+                const resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+                resultModal.show();
             });
         }
 
