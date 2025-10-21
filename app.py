@@ -128,88 +128,66 @@ def calculate():
             
             # Analisis solusi sistem persamaan linear
             m, n = A.shape
-            rank = len(pivots)  # Rank = jumlah pivot = jumlah persamaan independen
             num_vars = n - 1  # Kolom terakhir adalah kolom hasil
-            
-            # Cek konsistensi sistem dengan lebih teliti
-            is_consistent = True
-            inconsistent_row = -1
+
+            # Cek inkonsistensi menggunakan metode yang sama dengan Test.py
             for i in range(m):
-                # Cek apakah baris ini adalah baris nol di bagian koefisien
-                is_zero_row = True
-                for j in range(num_vars):
-                    if abs(rref_matrix[i, j]) > 1e-10:
-                        is_zero_row = False
-                        break
+                row = rref_matrix.row(i)
+                # Cek apakah semua koefisien adalah nol (kecuali kolom terakhir)
+                koefisien_nol = all(abs(row[j]) < 1e-10 for j in range(num_vars))
+                # Cek apakah konstanta tidak nol
+                konstanta_non_nol = abs(row[num_vars]) > 1e-10
                 
-                # Jika baris nol tapi konstanta tidak nol, sistem tidak konsisten
-                if is_zero_row and abs(rref_matrix[i, -1]) > 1e-10:
-                    is_consistent = False
-                    inconsistent_row = i
-                    break
-            
-            # Jika sistem tidak konsisten, langsung return
-            if not is_consistent:
-                konstanta = rref_matrix[inconsistent_row, -1]
-                result['explanation'] = f"Tidak ada solusi. Sistem tidak konsisten karena terdapat persamaan: " + \
-                                     f"0 = {konstanta} (pada baris {inconsistent_row + 1})."
-                return jsonify(result)
-            
-            # Hitung rank efektif dari matriks augmented dan matriks koefisien
-            rank_augmented = 0
-            rank_coef = 0
+                if koefisien_nol and konstanta_non_nol:
+                    result['explanation'] = f"Tidak ada solusi.\nTerjadi inkonsistensi pada baris {i+1} " + \
+                                         f"(0 = {row[num_vars]})."
+                    return jsonify(result)
+
+            # Hitung rank efektif (jumlah baris non-nol)
+            rank = 0
             for i in range(m):
-                # Cek rank matriks augmented
-                has_nonzero = False
-                for j in range(n):
-                    if abs(rref_matrix[i, j]) > 1e-10:
-                        has_nonzero = True
-                        break
-                if has_nonzero:
-                    rank_augmented += 1
-                
-                # Cek rank matriks koefisien
-                has_nonzero = False
-                for j in range(num_vars):
-                    if abs(rref_matrix[i, j]) > 1e-10:
-                        has_nonzero = True
-                        break
-                if has_nonzero:
-                    rank_coef += 1
-            
+                if not all(abs(rref_matrix[i, j]) < 1e-10 for j in range(n)):
+                    rank += 1
+
             # Analisis tipe solusi berdasarkan rank
-            if rank_augmented > rank_coef:
-                # Jika rank matriks augmented lebih besar dari rank matriks koefisien,
-                # berarti ada inkonsistensi
-                result['explanation'] = "Tidak ada solusi. Sistem tidak konsisten karena rank matriks augmented " + \
-                                     f"({rank_augmented}) lebih besar dari rank matriks koefisien ({rank_coef})."
-            elif rank_coef < num_vars:
-                # Jika rank matriks koefisien kurang dari jumlah variabel,
-                # maka ada solusi tak hingga banyak
-                free_vars = [i for i in range(num_vars) if i not in pivots]
-                free_vars_str = ", ".join(f"x_{i+1}" for i in free_vars)
-                num_free_vars = num_vars - rank_coef
+            if rank < num_vars:
+                # Hitung variabel bebas
+                pivot_cols = []
+                for i in range(m):
+                    for j in range(num_vars):
+                        if abs(rref_matrix[i, j]) > 1e-10:
+                            pivot_cols.append(j)
+                            break
                 
-                if num_free_vars == 1:
-                    result['explanation'] = f"Solusi tak hingga banyak dengan 1 variabel bebas: {free_vars_str}. " + \
-                                         "Solusi membentuk garis dalam ruang dimensi yang sesuai."
-                elif num_free_vars == 2:
-                    result['explanation'] = f"Solusi tak hingga banyak dengan 2 variabel bebas: {free_vars_str}. " + \
-                                         "Solusi membentuk bidang dalam ruang dimensi yang sesuai."
-                else:
-                    result['explanation'] = f"Solusi tak hingga banyak dengan {num_free_vars} variabel bebas: {free_vars_str}. " + \
-                                         f"Solusi membentuk ruang dimensi {num_free_vars}."
+                free_vars = [i+1 for i in range(num_vars) if i not in pivot_cols]
+                free_vars_str = ", ".join(f"x_{i}" for i in free_vars)
+                result['explanation'] = f"Solusi tak hingga banyak.\nJumlah variabel ({num_vars}) > " + \
+                                     f"Rank matriks ({rank}).\nVariabel bebas: {free_vars_str}"
             else:
-                # Jika rank sama dengan jumlah variabel dan sistem konsisten,
-                # maka ada solusi unik
+                # Solusi unik - verifikasi dan dapatkan nilai
+                solution_found = True
                 solution_values = []
+                
+                # Pastikan setiap variabel memiliki nilai yang terdefinisi
                 for i in range(num_vars):
-                    if i in pivots:
-                        value = rref_matrix[pivots.index(i), -1]
-                        solution_values.append(f"x_{i+1} = {value}")
-                        
-                solution_str = ", ".join(solution_values)
-                result['explanation'] = f"Solusi unik (tunggal) ditemukan: {solution_str}"
+                    value_found = False
+                    for row_idx in range(m):
+                        if abs(rref_matrix[row_idx, i]) > 1e-10:
+                            # Pastikan ini adalah baris yang mendefinisikan variabel ini
+                            is_defining_row = all(abs(rref_matrix[row_idx, j]) < 1e-10 for j in range(i))
+                            if is_defining_row:
+                                value_found = True
+                                solution_values.append(f"x_{i+1} = {rref_matrix[row_idx, -1]}")
+                                break
+                    
+                    if not value_found:
+                        solution_found = False
+                        break
+                
+                if solution_found and len(solution_values) == num_vars:
+                    result['explanation'] = "Solusi unik (tunggal).\n" + "\n".join(solution_values)
+                else:
+                    result['explanation'] = "Tidak ada solusi.\nSistem tidak konsisten."
             
         # Eliminasi Gauss (OBE) - Bentuk segitiga atas
         elif operation == 'ref':

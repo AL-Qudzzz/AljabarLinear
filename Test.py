@@ -4,123 +4,97 @@ import numpy as np
 
 # --- FUNGSI LOGIKA PERHITUNGAN MATRIKS ---
 
-def ke_bentuk_eselon_baris(matrix):
-    # Gunakan dtype=np.float64 untuk efisiensi
+def eliminasi_gauss(matrix, make_one=False, jordan=False):
+    """
+    Fungsi umum untuk semua jenis eliminasi Gauss
+    make_one: True untuk Satu Utama, False untuk OBE biasa
+    jordan: True untuk Gauss-Jordan, False untuk Gauss biasa
+    """
     mat = np.copy(matrix).astype(np.float64)
     num_rows, num_cols = mat.shape
     pivot_row = 0
     langkah_langkah = [("Matriks Awal:", mat.copy())]
 
+    # Forward elimination
     for j in range(num_cols):
         if pivot_row >= num_rows:
             break
 
-        # Cari baris dengan nilai absolut maksimum di kolom j (pivoting)
-        # untuk stabilitas numerik.
-        i = pivot_row
-        max_row = i
-        while i < num_rows:
-            if abs(mat[i, j]) > abs(mat[max_row, j]):
-                max_row = i
-            i += 1
-
-        # Tukar baris pivot saat ini dengan baris yang memiliki nilai maksimum
-        if max_row != pivot_row:
-            mat[[pivot_row, max_row]] = mat[[max_row, pivot_row]]
-            langkah_langkah.append((f"Tukar Baris {pivot_row+1} dan {max_row+1}", np.copy(mat)))
-
-        # Jika elemen pivot adalah nol, lewati kolom ini
-        if abs(mat[pivot_row, j]) < 1e-10:
+        # Cari pivot terbesar (partial pivoting)
+        max_row = max(range(pivot_row, num_rows), 
+                     key=lambda i: abs(mat[i, j]))
+        
+        if abs(mat[max_row, j]) < 1e-10:
             continue
 
-        # Buat elemen di bawah pivot menjadi nol
-        for i in range(pivot_row + 1, num_rows):
-            faktor = mat[i, j] / mat[pivot_row, j]
-            if faktor != 0:
+        # Tukar baris jika perlu
+        if max_row != pivot_row:
+            mat[[pivot_row, max_row]] = mat[[max_row, pivot_row]]
+            langkah_langkah.append((f"Tukar baris {pivot_row+1} dan {max_row+1}:", mat.copy()))
+
+        # Buat pivot menjadi 1 jika diminta
+        if make_one:
+            pivot_val = mat[pivot_row, j]
+            if abs(pivot_val - 1.0) > 1e-10:
+                mat[pivot_row] = mat[pivot_row] / pivot_val
+                langkah_langkah.append((f"R{pivot_row+1} = R{pivot_row+1}/{pivot_val:.2f}:", mat.copy()))
+
+        # Eliminasi di bawah pivot
+        rows_to_eliminate = range(num_rows) if jordan else range(pivot_row + 1, num_rows)
+        for i in rows_to_eliminate:
+            if i != pivot_row and abs(mat[i, j]) > 1e-10:
+                faktor = mat[i, j] / mat[pivot_row, j]
                 mat[i] = mat[i] - faktor * mat[pivot_row]
-                langkah_langkah.append((f"R{i+1} = R{i+1} - ({faktor:.2f})*R{pivot_row+1}", np.copy(mat)))
+                langkah_langkah.append((f"R{i+1} = R{i+1} - ({faktor:.2f})*R{pivot_row+1}:", mat.copy()))
 
         pivot_row += 1
 
     # Atasi nilai yang sangat kecil mendekati nol
     mat[np.abs(mat) < 1e-10] = 0
-    langkah_langkah.append(("Hasil Akhir (Bentuk Eselon Baris):", np.copy(mat)))
-    return mat, langkah_langkah
-
-def ke_bentuk_eselon_baris_tereduksi(matrix):
-    """
-    Mengubah matriks menjadi bentuk eselon baris tereduksi.
-    """
-    # Pertama, ubah ke bentuk eselon baris biasa
-    mat_eselon, langkah_eselon = ke_bentuk_eselon_baris(matrix)
-    mat = np.copy(mat_eselon).astype(float)
-    num_rows, num_cols = mat.shape
-
-    langkah_langkah = langkah_eselon[:-1] # Hapus langkah terakhir dari eselon
-    langkah_langkah.append(("Lanjut ke Bentuk Tereduksi:", np.copy(mat)))
-
-    for i in range(num_rows - 1, -1, -1):
-        # Cari pivot (elemen non-nol pertama dari kiri)
-        pivot_col = -1
-        for j in range(num_cols):
-            if abs(mat[i, j]) > 1e-10:
-                pivot_col = j
-                break
-
-        if pivot_col == -1:
-            continue # Baris ini adalah baris nol
-
-        # Jadikan pivot sebagai 1 (Satu Utama)
-        pivot_val = mat[i, pivot_col]
-        if abs(pivot_val - 1.0) > 1e-10:
-            mat[i] = mat[i] / pivot_val
-            langkah_langkah.append((f"R{i+1} = R{i+1} / {pivot_val:.2f}", np.copy(mat)))
-
-        # Buat elemen di ATAS pivot menjadi nol
-        for k in range(i - 1, -1, -1):
-            faktor = mat[k, pivot_col]
-            if faktor != 0:
-                mat[k] = mat[k] - faktor * mat[i]
-                langkah_langkah.append((f"R{k+1} = R{k+1} - ({faktor:.2f})*R{i+1}", np.copy(mat)))
-
-    mat[np.abs(mat) < 1e-10] = 0
-    langkah_langkah.append(("Hasil Akhir (Bentuk Eselon Baris Tereduksi):", np.copy(mat)))
+    
+    # Tentukan judul hasil akhir berdasarkan jenis eliminasi
+    if jordan:
+        hasil = "Hasil Akhir (Eliminasi Gauss-Jordan):"
+    elif make_one:
+        hasil = "Hasil Akhir (Eliminasi Gauss dengan Satu Utama):"
+    else:
+        hasil = "Hasil Akhir (Eliminasi Gauss/OBE):"
+    langkah_langkah.append((hasil, mat.copy()))
+    
     return mat, langkah_langkah
 
 def analisis_solusi(matrix):
     """
     Menganalisis jenis solusi dari matriks augmented
-    yang sudah dalam bentuk eselon baris tereduksi.
     """
-    rref_matrix, _ = ke_bentuk_eselon_baris_tereduksi(matrix)
+    # Dapatkan bentuk tereduksi
+    rref_matrix, _ = eliminasi_gauss(matrix, make_one=True, jordan=True)
     num_rows, num_cols = rref_matrix.shape
     num_vars = num_cols - 1
 
-    # Cek inkonsistensi (baris [0 0 ... | c] dengan c != 0)
+    # Cek inkonsistensi
     for i in range(num_rows):
         row = rref_matrix[i, :]
-        koefisien_nol = np.all(np.abs(row[:num_vars]) < 1e-10)
-        konstanta_non_nol = abs(row[num_vars]) > 1e-10
-        if koefisien_nol and konstanta_non_nol:
-            return f"Tidak Ada Solusi.\nTerjadi inkonsistensi pada baris {i+1} (0 = {row[num_vars]:.2f})."
+        if np.all(np.abs(row[:num_vars]) < 1e-10) and abs(row[-1]) > 1e-10:
+            return f"Tidak Ada Solusi.\nTerjadi inkonsistensi pada baris {i+1} (0 = {row[-1]:.2f})."
 
-    # Hitung rank (jumlah baris non-nol atau jumlah satu utama)
-    rank = 0
-    for i in range(num_rows):
-        if not np.all(np.abs(rref_matrix[i, :]) < 1e-10):
-            rank += 1
+    # Hitung rank efektif
+    rank = sum(1 for i in range(num_rows) 
+              if not np.all(np.abs(rref_matrix[i, :]) < 1e-10))
 
+    # Analisis tipe solusi
     if rank < num_vars:
         return f"Solusi Tak Hingga Banyak.\nJumlah variabel ({num_vars}) > Rank matriks ({rank})."
-    else: # rank == num_vars
-        solusi = []
-        for i in range(rank):
-            # Cari kolom pivot untuk baris ini
-            pivot_col = np.where(np.abs(rref_matrix[i, :num_vars]) > 1e-10)[0][0]
-            nilai_solusi = rref_matrix[i, num_vars]
-            solusi.append(f"x{pivot_col+1} = {nilai_solusi:.2f}")
+    
+    # Jika sampai di sini, solusi unik
+    solusi = []
+    for i in range(rank):
+        pivot_col = next((j for j in range(num_vars) 
+                         if abs(rref_matrix[i, j]) > 1e-10), -1)
+        if pivot_col != -1:
+            solusi.append(f"x{pivot_col+1} = {rref_matrix[i, -1]:.2f}")
 
-        return "Solusi Unik (Tunggal).\n" + "\n".join(solusi)
+    return "Solusi Unik (Tunggal).\n" + "\n".join(solusi)
 
 
 # --- KELAS UNTUK ANTARMUKA PENGGUNA (GUI) ---
@@ -219,11 +193,19 @@ class App(tk.Tk):
         # Frame untuk tombol aksi
         button_frame = ttk.Frame(main_frame)
         button_frame.pack(pady=20, fill="x", expand=True)
-        button_frame.columnconfigure((0, 1, 2), weight=1)
+        button_frame.columnconfigure((0, 1), weight=1)  # Dua kolom dengan bobot sama
 
-        ttk.Button(button_frame, text="Bentuk Eselon Baris", command=self.hitung_eselon).grid(row=0, column=0, padx=5, sticky="ew")
-        ttk.Button(button_frame, text="Bentuk Tereduksi", command=self.hitung_tereduksi).grid(row=0, column=1, padx=5, sticky="ew")
-        ttk.Button(button_frame, text="Analisis Solusi", command=self.tentukan_solusi).grid(row=0, column=2, padx=5, sticky="ew")
+        # Tombol baris pertama
+        ttk.Button(button_frame, text="1. Eliminasi Gauss (OBE)", 
+                  command=self.hitung_eselon).grid(row=0, column=0, padx=5, pady=2, sticky="ew")
+        ttk.Button(button_frame, text="2. Eliminasi Gauss (Satu Utama)", 
+                  command=self.hitung_tereduksi).grid(row=0, column=1, padx=5, pady=2, sticky="ew")
+        
+        # Tombol baris kedua
+        ttk.Button(button_frame, text="3. Eliminasi Gauss-Jordan", 
+                  command=self.gauss_jordan).grid(row=1, column=0, padx=5, pady=2, sticky="ew")
+        ttk.Button(button_frame, text="4. Analisis Solusi", 
+                  command=self.tentukan_solusi).grid(row=1, column=1, padx=5, pady=2, sticky="ew")
 
         ttk.Button(main_frame, text="< Kembali (Ubah Ukuran)", command=self.create_widgets_ukuran).pack(pady=10)
 
@@ -261,14 +243,23 @@ class App(tk.Tk):
     def hitung_eselon(self):
         matrix = self.get_matrix_from_input()
         if matrix is not None:
-            hasil, langkah = ke_bentuk_eselon_baris(matrix)
-            self.tampilkan_hasil("Hasil - Bentuk Eselon Baris", langkah)
+            # Eliminasi Gauss (OBE)
+            hasil, langkah = eliminasi_gauss(matrix, make_one=False, jordan=False)
+            self.tampilkan_hasil("Hasil - Eliminasi Gauss (OBE)", langkah)
 
     def hitung_tereduksi(self):
         matrix = self.get_matrix_from_input()
         if matrix is not None:
-            hasil, langkah = ke_bentuk_eselon_baris_tereduksi(matrix)
-            self.tampilkan_hasil("Hasil - Bentuk Eselon Baris Tereduksi", langkah)
+            # Eliminasi Gauss dengan Satu Utama
+            hasil, langkah = eliminasi_gauss(matrix, make_one=True, jordan=False)
+            self.tampilkan_hasil("Hasil - Eliminasi Gauss (Satu Utama)", langkah)
+
+    def gauss_jordan(self):
+        matrix = self.get_matrix_from_input()
+        if matrix is not None:
+            # Eliminasi Gauss-Jordan
+            hasil, langkah = eliminasi_gauss(matrix, make_one=True, jordan=True)
+            self.tampilkan_hasil("Hasil - Eliminasi Gauss-Jordan", langkah)
 
     def tentukan_solusi(self):
         matrix = self.get_matrix_from_input()
@@ -277,12 +268,10 @@ class App(tk.Tk):
                 messagebox.showerror("Error", "Analisis solusi memerlukan matriks augmented (minimal 2 kolom).")
                 return
 
-            _, langkah_rref = ke_bentuk_eselon_baris_tereduksi(matrix)
+            # Dapatkan langkah-langkah Gauss-Jordan dan analisis solusi
+            rref_matrix, langkah_rref = eliminasi_gauss(matrix, make_one=True, jordan=True)
             solusi_text = analisis_solusi(matrix)
-
-            # Gabungkan langkah-langkah RREF dengan hasil analisis
             langkah_analisis = langkah_rref + [("Analisis Solusi:", solusi_text)]
-
             self.tampilkan_hasil_solusi("Hasil - Analisis Solusi", langkah_analisis)
 
     def tampilkan_hasil_solusi(self, title, steps):
